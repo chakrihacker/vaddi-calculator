@@ -22,9 +22,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { calculateTotalYears, durationBetweenDates } from "./utils";
 
 const VaddiCalculatorSchema = z.object({
 	interestType: z.enum(["simple", "compound"]),
@@ -40,36 +40,6 @@ const VaddiCalculatorSchema = z.object({
 	compoundFrequencyMonths: z.coerce.number().optional(),
 	compoundFrequency: z.enum(["annually", "semiannually", "custom"]),
 });
-
-const timeFromYear = (date: Date, baseYear: number) => {
-	const year = date.getFullYear();
-	const month = date.getMonth();
-	let day = date.getDate();
-	if (day === 31) {
-		day = 30;
-	}
-	return (year - baseYear) * 360 + month * 30 + day;
-};
-
-const durationBetweenDates = (startDate: Date, endDate: Date) => {
-	if (startDate > endDate) {
-		return {
-			years: 0,
-			months: 0,
-			days: 0,
-		};
-	}
-	const baseYear = startDate.getFullYear() - 2;
-	const start = timeFromYear(startDate, baseYear);
-	const end = timeFromYear(endDate, baseYear);
-	const totalDays = end - start;
-
-	const years = Math.floor(totalDays / 360);
-	const months = Math.floor((totalDays % 360) / 30);
-	const days = (totalDays % 360) % 30;
-
-	return { years, months, days };
-};
 
 const calculateDuration = ({
 	loanDurationType,
@@ -122,9 +92,15 @@ export default function VaddiCalculator() {
 	const durationType = vaddiForm.watch("loanDurationType");
 	const compoundFrequency = vaddiForm.watch("compoundFrequency");
 
-	const simpleInterest = () => {};
+	const simpleInterest = ({
+		amount,
+		time,
+		rateOfInterest,
+	}: { amount: number; time: number; rateOfInterest: number }) => {
+		return amount * rateOfInterest * time;
+	};
 
-	const compoundInterest = () => {};
+	const compoundInterest = ({ amount, time, rateOfInterest, frequency }) => {};
 
 	const onSubmit = (data: z.infer<typeof VaddiCalculatorSchema>) => {
 		console.log(data);
@@ -132,7 +108,30 @@ export default function VaddiCalculator() {
 			(data.interestRate * (data.interestRateType === "percent" ? 1 : 12)) /
 			100;
 		const duration = calculateDuration(data);
-		console.log(percentage, duration);
+		const finalDuration = calculateTotalYears(duration);
+		console.log({ duration, finalDuration });
+		if (data.interestType === "simple") {
+			const interest = simpleInterest({
+				amount: data.amount,
+				time: finalDuration,
+				rateOfInterest: percentage,
+			});
+			console.log(interest);
+		} else {
+			const interest = compoundInterest({
+				amount: data.amount,
+				rateOfInterest: percentage,
+				time: finalDuration,
+				frequency:
+					data.compoundFrequency === "custom"
+						? data.compoundFrequencyMonths
+						: data.compoundFrequency === "annually"
+							? 1
+							: 2,
+			});
+			console.log("compound interest", interest);
+		}
+		console.log(percentage, duration, finalDuration);
 	};
 
 	return (
