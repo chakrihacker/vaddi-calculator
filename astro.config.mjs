@@ -7,10 +7,11 @@ import tailwind from "@astrojs/tailwind";
 
 // https://astro.build/config
 export default defineConfig({
-  integrations: [
-    react(),
-    tailwind({
-      applyBaseStyles: false,
-    }),
-  ],
+	site: "https://vaddi-app.fyndx.io",
+	integrations: [
+		react(),
+		tailwind({
+			applyBaseStyles: false,
+		}),
+	],
 });
